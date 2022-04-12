@@ -16,11 +16,18 @@ import router from "./router";
 
 import "./icons"; // icon
 import "./permission"; // permission control
-import "./utils/error-log"; // error log
+// import "./utils/error-log"; // error log
 
 import * as filters from "./filters"; // global filters
 import api from "./api";
+import CategorySelect from "@/components/CategorySelect";
+import HintButton from "@/components/HintButton";
+
 Vue.prototype.$api = api;
+Vue.component(HintButton.name, HintButton);
+Vue.component(CategorySelect.name, CategorySelect);
+Vue.prototype.$api.uploadUrl =
+  process.env.VUE_APP_BASE_API + "/admin/product/fileUpload";
 /**
  * If you don't want to use mock-server
  * you want to use MockJs for mock api
@@ -29,7 +36,7 @@ Vue.prototype.$api = api;
  * Currently MockJs will be used in the production environment,
  * please remove it before going online ! ! !
  */
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === "develement") {
   const { mockXHR } = require("../mock");
   mockXHR();
 }

@@ -187,6 +187,8 @@ export default {
           this.$store
             .dispatch("user/login", this.loginForm)
             .then(() => {
+              alert("成功" + (this.redirect || "/"));
+
               this.$router.push({
                 path: this.redirect || "/",
                 query: this.otherQuery,
@@ -194,11 +196,11 @@ export default {
               this.loading = false;
             })
             .catch((error) => {
-              alert(error);
+              this.$message.error("登录失败，" + error);
               this.loading = false;
             });
         } else {
-          alert("error submit!!");
+          this.$message.error("error submit!!！");
           return false;
         }
       });

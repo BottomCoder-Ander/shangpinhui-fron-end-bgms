@@ -1,73 +1,123 @@
-import { login, logout, getInfo } from "@/api/user";
+//引入登录|退出登录|获取用户信息的接口函数
+import user from "@/api/acl/user";
+// 获取token|设置token|删除token的函数
 import { getToken, setToken, removeToken } from "@/utils/auth";
-import router, { resetRouter } from "@/router";
+//路由模块当中重置路由的方法
+import { anyRoutes, resetRouter, asyncRoutes, constantRoutes } from "@/router";
+import router from "@/router";
+import cloneDeep from "lodash/cloneDeep";
 
-const state = {
-  token: getToken(),
-  name: "",
-  avatar: "",
-  introduction: "",
-  roles: [],
+//箭头函数
+const getDefaultState = () => {
+  return {
+    //获取token
+    token: getToken(),
+    //存储用户名
+    name: "",
+    //存储用户头像
+    avatar: "",
+    //服务器返回的菜单信息【根据不同的角色：返回的标记信息，数组里面的元素是字符串】
+    routes: [],
+    //角色信息
+    roles: [],
+    //按钮权限的信息
+    buttons: [],
+    //对比之后【项目中已有的异步路由，与服务器返回的标记信息进行对比最终需要展示的理由】
+    accessAsyncRoutes: [],
+    //用户最终需要展示全部路由
+    allAccessRoutes: [],
+  };
 };
 
+const state = getDefaultState();
+
+//唯一修改state的地方
 const mutations = {
+  //重置state
+  RESET_STATE: (state) => {
+    Object.assign(state, getDefaultState());
+  },
+  //存储token
   SET_TOKEN: (state, token) => {
     state.token = token;
   },
-  SET_INTRODUCTION: (state, introduction) => {
-    state.introduction = introduction;
+  //存储用户信息
+  SET_USERINFO: (state, userInfo) => {
+    //用户名
+    state.name = userInfo.name;
+    //用户头像
+    state.avatar = userInfo.avatar;
+    //菜单权限标记
+    state.routes = userInfo.routes;
+    //按钮权限标记
+    state.buttons = userInfo.buttons;
+    //角色
+    state.roles = userInfo.roles;
   },
-  SET_NAME: (state, name) => {
-    state.name = name;
-  },
-  SET_AVATAR: (state, avatar) => {
-    state.avatar = avatar;
-  },
-  SET_ROLES: (state, roles) => {
-    state.roles = roles;
+  //最终计算出的异步路由(根据当前权限加上异步路由)
+  SET_ACCESSROUTES: (state, asyncRoutes) => {
+    //vuex保存当前用户的异步路由，注意，一个用户需要展示完成路由：常量、异步、任意路由
+    state.accessAsyncRoutes = asyncRoutes;
+    //计算出当前用户需要展示所有路由
+    state.allAccessRoutes = constantRoutes.concat(
+      state.accessAsyncRoutes,
+      anyRoutes
+    );
+
+    //给路由器添加新的路由
+    router.addRoutes(state.allAccessRoutes);
   },
 };
 
+//定义一个函数：两个数组进行对比，对比出当前用户到底显示哪些异步路由
+const computedAsyncRoutes = (asyncRoutes, routes) => {
+  //过滤出当前用户【超级管理|普通员工】需要展示的异步路由
+  return asyncRoutes.filter((item) => {
+    //数组当中没有这个元素返回索引值-1，如果有这个元素返回的索引值一定不是-1
+    if (routes.indexOf(item.name) != -1) {
+      //递归:别忘记还有2、3、4、5、6级路由
+      if (item.children && item.children.length) {
+        item.children = computedAsyncRoutes(item.children, routes);
+      }
+      return true;
+    }
+  });
+};
+
+//actions
 const actions = {
-  // user login
+  //这里在处理登录业务
   login({ commit }, userInfo) {
+    //解构出用户名与密码
     const { username, password } = userInfo;
-    return new Promise((resolve, reject) => {
-      login({ username: username.trim(), password: password })
-        .then((response) => {
-          const { data } = response;
-          commit("SET_TOKEN", data.token);
-          setToken(data.token);
-          resolve();
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+    return user.login({ username: username.trim(), password: password }).then(
+      (res) => {
+        //vuex存储token
+        commit("SET_TOKEN", res.data.token);
+        //本地持久化存储token
+        setToken(res.data.token);
+      },
+      (reason) => {
+        return Promise.reject(reason);
+      }
+    );
   },
 
-  // get user info
+  //获取用户信息
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
-      getInfo(state.token)
+      user
+        .getInfo(state.token)
         .then((response) => {
+          //获取用户信息:返回数据包含：用户名name、用户头像avatar、routes[返回的标志:不同的用户应该展示哪些菜单的标记]、roles（用户角色信息）、buttons【按钮的信息：按钮权限用的标记】
           const { data } = response;
-
-          if (!data) {
-            reject("Verification failed, please Login again.");
-          }
-
-          const { roles, name, avatar, introduction } = data;
-
-          // roles must be a non-empty array
-          if (!roles || roles.length <= 0) {
-            reject("getInfo: roles must be a non-null array!");
-          }
-
-          commit("SET_ROLES", roles);
-          commit("SET_NAME", name);
-          commit("SET_AVATAR", avatar);
-          commit("SET_INTRODUCTION", introduction);
+          //vuex存储用户全部的信息
+          commit("SET_USERINFO", data);
+          console.log(data);
+          commit(
+            "SET_ACCESSROUTES",
+            computedAsyncRoutes(cloneDeep(asyncRoutes), data.routes)
+          );
           resolve(data);
         })
         .catch((error) => {
@@ -77,19 +127,14 @@ const actions = {
   },
 
   // user logout
-  logout({ commit, state, dispatch }) {
+  logout({ commit, state }) {
     return new Promise((resolve, reject) => {
-      logout(state.token)
+      user
+        .logout(state.token)
         .then(() => {
-          commit("SET_TOKEN", "");
-          commit("SET_ROLES", []);
-          removeToken();
+          removeToken(); // must remove  token  first
           resetRouter();
-
-          // reset visited views and cached views
-          // to fixed https://github.com/PanJiaChen/vue-element-admin/issues/2485
-          dispatch("tagsView/delAllViews", null, { root: true });
-
+          commit("RESET_STATE");
           resolve();
         })
         .catch((error) => {
@@ -101,33 +146,10 @@ const actions = {
   // remove token
   resetToken({ commit }) {
     return new Promise((resolve) => {
-      commit("SET_TOKEN", "");
-      commit("SET_ROLES", []);
-      removeToken();
+      removeToken(); // must remove  token  first
+      commit("RESET_STATE");
       resolve();
     });
-  },
-
-  // dynamically modify permissions
-  async changeRoles({ commit, dispatch }, role) {
-    const token = role + "-token";
-
-    commit("SET_TOKEN", token);
-    setToken(token);
-
-    const { roles } = await dispatch("getInfo");
-
-    resetRouter();
-
-    // generate accessible routes map based on roles
-    const accessRoutes = await dispatch("permission/generateRoutes", roles, {
-      root: true,
-    });
-    // dynamically add accessible routes
-    router.addRoutes(accessRoutes);
-
-    // reset visited views and cached views
-    dispatch("tagsView/delAllViews", null, { root: true });
   },
 };
 

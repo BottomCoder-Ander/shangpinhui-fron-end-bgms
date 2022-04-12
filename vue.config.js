@@ -36,8 +36,10 @@ module.exports = {
       warnings: false,
       errors: true,
     },
-    // 不用mock数据了，注释掉
-    //before: require("./mock/mock-server.js"),
+
+    // 有部分还需要mock模拟
+    // 必须使用after，不能用before，不知道爲什麽
+    after: require("./mock/mock-server.js"),
     //配置代理跨域
     proxy: {
       "/dev-api": {

@@ -74,7 +74,7 @@
         <el-form-item label="品牌logo" label-width="80px" prop="logoUrl">
           <el-upload
             class="avatar-uploader"
-            :action="uploadUrl"
+            :action="$api.uploadUrl"
             :on-success="handleAvatarSuccess"
             :before-upload="beforeAvatarUpload"
             :show-file-list="false"
@@ -101,11 +101,7 @@
 <script>
 export default {
   name: "TradeMark",
-  computed: {
-    uploadUrl() {
-      return process.env.VUE_APP_BASE_API + "/admin/product/fileUpload";
-    },
-  },
+  computed: {},
   data() {
     // 自定义elementUI表单验证规则
     var validatetmName = (rule, value, callback) => {
@@ -208,6 +204,7 @@ export default {
           this.dialogFormVisible = false;
           //接受tmForm
           let tmForm = this.tmForm;
+          console.log(this.tmForm);
           //发请求---添加品牌||修改品牌数据【区别在于tmForm是否包含id】
           //如果添加||修改成功，需要再次发请求，获取产品列表数据
           //成功（添加|修改）
@@ -226,7 +223,7 @@ export default {
               this.getTradeMarkList(tmForm.id ? this.page : 1);
             },
             (reason) => {
-              this.$message.error(reason);
+              this.$message.error("新增/修改失败，" + reason);
             }
           );
         } else {

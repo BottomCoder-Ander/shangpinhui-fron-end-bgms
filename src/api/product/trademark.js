@@ -11,16 +11,16 @@ export const reqTradeMarkList = (page, limit) =>
 //新增品牌
 export const reqAddTradeMark = (trademark) =>
   request({
-    url: "/admin/product/baseTrademark/save",
+    url: "/admin/product/baseTrademark/update",
     data: trademark,
-    method: "post",
+    method: "put",
   });
 //修改某一个品牌
 export const reqUpdateTradeMark = (trademark) =>
   request({
-    url: "/admin/product/baseTrademark/update",
+    url: "/admin/product/baseTrademark/save",
     data: trademark,
-    method: "put",
+    method: "post",
   });
 
 //删除品牌

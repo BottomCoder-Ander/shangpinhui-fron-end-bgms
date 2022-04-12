@@ -2,6 +2,7 @@
 import * as trademark from "./trademark";
 import * as attr from "./attr";
 import * as spu from "./spu";
-import * as sku from "./sku";
+// 注意写法的区别，在sku中使用export default
+import sku from "./sku";
 
 export default { trademark, attr, spu, sku };
